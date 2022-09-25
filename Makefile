@@ -7,12 +7,6 @@ CC := gcc
 SRCS := $(shell find $(SRC_DIRS) -name '*.c')
 
 
-check-app:
-ifndef APP
-	$(error APP is unspicified, \
-	Please choose one of the following apps: femtoShell, ... \
-	Example command: make APP=femtoShell )
-endif
 
 
 $(BUILD_DIR)/$(APP): check-app
@@ -26,5 +20,12 @@ run: $(BUILD_DIR)/$(APP)
 
 clean:
 	@rm -r $(BUILD_DIR)
+
+check-app:
+ifndef APP
+	$(error APP is unspicified, \
+	Please choose one of the following apps: femtoShell, ... \
+	Example command: make APP=femtoShell )	 
+endif
 
 .PHONY: clean check-app run
