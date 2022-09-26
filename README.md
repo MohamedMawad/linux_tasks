@@ -36,3 +36,23 @@ moawad@moawad-VB:~/linux_tasks/bin$
 moawad@moawad-VB:~/linux_tasks/bin$ ./pwd
 /home/moawad/linux_tasks/bin  
 ```
+**4. cp command:**  
+  - copy a file to another file and keep the original one  
+  - cp Output Example:
+```
+moawad@moawad-VB:~/linux_tasks/bin$ ls  
+cp  test_file  
+moawad@moawad-VB:~/linux_tasks/bin$ ./cp test_file test_file_cp  
+moawad@moawad-VB:~/linux_tasks/bin$ ls  
+cp  test_file  test_file_cp  
+```
+**5. mv command:**  
+  - move a file to another file and remove the original one  
+  - mv Output Example:
+```
+moawad@moawad-VB:~/linux_tasks/bin$ ls  
+mv  test_file  
+moawad@moawad-VB:~/linux_tasks/bin$ ./mv test_file test_file_mv  
+moawad@moawad-VB:~/linux_tasks/bin$ ls  
+mv  test_file_mv   
+```
