@@ -29,3 +29,10 @@ moawad@moawad-VB:~/linux_tasks/bin$ ./echo Hello World
 Hello World   
 moawad@moawad-VB:~/linux_tasks/bin$   
 ```
+**3. pwd command:**  
+  - used to print current working directory  
+  - pwd Output Example:
+```
+moawad@moawad-VB:~/linux_tasks/bin$ ./pwd
+/home/moawad/linux_tasks/bin  
+```
