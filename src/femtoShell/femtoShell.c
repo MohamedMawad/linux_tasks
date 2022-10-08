@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <limits.h>
 #include <signal.h>
+#include <ctype.h>
 
 // printf color codes
 void red() { printf("\033[1;31m"); }
@@ -109,6 +110,124 @@ int tokenizer(char *inputStr, char separator, char ***output)
 	return numTokens;
 }
 
+typedef struct _node
+{
+	char *name;
+	char *value;
+	struct _node *next;
+} node;
+
+void addVariable(char *varName, char *varValue, node *head);
+
+void addVariable(char *varName, char *varValue, node *head)
+{
+	node *currentNode = head->next;
+	int varNameUpdated = 0;
+	int varValueUpdated = 0;
+
+	// check that the varValue is an immediate value or a vraiable starting with $ sign
+	if (varValue[0] == '$')
+	{
+		while (currentNode != NULL)
+		{
+			if (strcmp(currentNode->name, &varValue[1]) == 0)
+			{
+				varValue = currentNode->value;
+				varValueUpdated = 1;
+				break;
+			}
+
+			currentNode = currentNode->next;
+		}
+
+		if (varValueUpdated == 0)
+		{
+			varValue = NULL;
+		}
+	}
+
+	// Reset currentNode pointer to start from the head
+	currentNode = head->next;
+
+	// Search for the variable name and update it if found
+	while (currentNode != NULL)
+	{
+		if (strcmp(currentNode->name, varName) == 0)
+		{
+			free(currentNode->value);
+			if (varValue == NULL)
+			{
+				currentNode->value = (char *)malloc(1);
+				strcpy(currentNode->value, "");
+			}
+			else
+			{
+				currentNode->value = (char *)malloc(strlen(varValue) + 1);
+				strcpy(currentNode->value, varValue);
+			}
+			varNameUpdated = 1;
+			break;
+		}
+
+		currentNode = currentNode->next;
+	}
+
+	// create a new variable if not found
+	if (varNameUpdated == 0)
+	{
+		node *newVar = (node *)malloc(sizeof(node));
+
+		newVar->name = (char *)malloc(strlen(varName) + 1);
+		strcpy(newVar->name, varName);
+
+		if (varValue == NULL)
+		{
+			newVar->value = (char *)malloc(1);
+			strcpy(newVar->value, "");
+		}
+		else
+		{
+			newVar->value = (char *)malloc(strlen(varValue) + 1);
+			strcpy(newVar->value, varValue);
+		}
+
+		newVar->next = head->next;
+		head->next = newVar;
+	}
+}
+
+void set(node *head);
+
+void set(node *head)
+{
+	node *currentNode = head->next;
+	while (currentNode != NULL)
+	{
+		printf("%s=%s\n", currentNode->name, currentNode->value);
+		currentNode = currentNode->next;
+	}
+}
+
+void unset(char *varName, node *head)
+{
+	node *currentNode = head->next;
+	node *previousNode = head;
+	while (currentNode != NULL)
+	{
+		if (strcmp(currentNode->name, varName) == 0)
+		{
+			previousNode->next = currentNode->next;
+			currentNode->next = NULL;
+			free(currentNode->name);
+			free(currentNode->value);
+			free(currentNode);
+		}
+		// printf("%s=%s\n", currentNode->name, currentNode->value);
+		currentNode = currentNode->next;
+		previousNode = previousNode->next;
+	}
+}
+
 int main(int argc, char **argv)
 {
 
@@ -119,6 +238,10 @@ int main(int argc, char **argv)
 	ssize_t lineSize = 0;
 	pid_t ret_wait, ch_pid;
 	int wstatus;
+	int cmdIndex = 0;
+	node localVarsHead;
+	localVarsHead.next = NULL;
+
 	// Ignoring the following signals Ctrl+C(SIGINT), Ctrl+Z(SIGTSTP), Ctrl+\(SIGQUIT)
 	signal(SIGINT, SIG_IGN);
 	signal(SIGTSTP, SIG_IGN);
@@ -136,24 +259,45 @@ int main(int argc, char **argv)
 		}
 		line[lineSize - 1] = '\0';
 		cmdArgc = tokenizer(line, ' ', &cmdArgv);
-		// for (int i = 0; i < cmdArgc; i++)
-		// {
-		// 	printf("argv[%d]: %s\n", i, cmdArgv[i]);
-		// }
+
+		// set(&localVarsHead);
+		if ((strchr(cmdArgv[0], '=') != NULL) && (cmdArgc == 1) &&
+			(isalpha(cmdArgv[0][0]) || (cmdArgv[0][0] >= '_')))
+		{
+			char *assignmentOp = strchr(cmdArgv[0], '=');
+			*assignmentOp = 0;
+			// printf("%s, %s\n", cmdArgv[0], ++assignmentOp);
+			addVariable(cmdArgv[0], ++assignmentOp, &localVarsHead);
+			continue;
+		}
+
 		if (strcmp(cmdArgv[0], "exit") == 0)
 		{
 			printf("Good Bye :) \n");
 			break;
 		}
+		else if (strcmp(cmdArgv[0], "set") == 0)
+		{
+			set(&localVarsHead);
+			continue;
+		}
+		else if (strcmp(cmdArgv[0], "unset") == 0)
+		{
+			for (int i = 1; i < cmdArgc; i++)
+			{
+				unset(cmdArgv[i], &localVarsHead);
+			}
+			continue;
+		}
 		else if (strcmp(cmdArgv[0], "cd") == 0)
 		{
-			static char priviousPath[PATH_MAX + 1] = {0};
+			static char previousPath[PATH_MAX + 1] = {0};
 			char currentPath[PATH_MAX + 1];
 			int status = 0;
 
 			getcwd(currentPath, PATH_MAX + 1);
 
-			if (cmdArgc == 1)
+			if (cmdArgc == 1 || (strcmp(cmdArgv[1], "~") == 0))
 			{
 				chdir(getenv("HOME"));
 			}
@@ -165,11 +309,11 @@ int main(int argc, char **argv)
 			else if (strcmp(cmdArgv[1], "-") == 0)
 			{
 
-				if ((priviousPath[0] != 0))
+				if ((previousPath[0] != 0))
 				{
-					if (chdir(priviousPath) == -1)
+					if (chdir(previousPath) == -1)
 					{
-						printf("cd: %s: No such file or directory\n", priviousPath);
+						printf("cd: %s: No such file or directory\n", previousPath);
 						status = -1;
 					}
 				}
@@ -187,10 +331,10 @@ int main(int argc, char **argv)
 
 			if (status == 0)
 			{
-				strcpy(priviousPath, currentPath);
-				priviousPath[strlen(currentPath)] = 0;
+				strcpy(previousPath, currentPath);
+				previousPath[strlen(currentPath)] = 0;
 			}
-			
+
 			continue;
 		}
 
