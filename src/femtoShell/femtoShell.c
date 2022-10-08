@@ -117,11 +117,33 @@ typedef struct _node
 	struct _node *next;
 } node;
 
-void addVariable(char *varName, char *varValue, node *head);
+node *searchForVariable(char *varName, node *head);
 
-void addVariable(char *varName, char *varValue, node *head)
+node *searchForVariable(char *varName, node *head)
 {
 	node *currentNode = head->next;
+	node *retNode = NULL;
+
+	while (currentNode != NULL)
+	{
+		if (strcmp(currentNode->name, varName) == 0)
+		{
+			retNode = currentNode;
+			break;
+		}
+
+		currentNode = currentNode->next;
+	}
+
+	return retNode;
+}
+
+node *addVariable(char *varName, char *varValue, node *head);
+
+node *addVariable(char *varName, char *varValue, node *head)
+{
+	node *currentNode = head->next;
+	node *addedNode = NULL;
 	int varNameUpdated = 0;
 	int varValueUpdated = 0;
 
@@ -165,6 +187,8 @@ void addVariable(char *varName, char *varValue, node *head)
 				currentNode->value = (char *)malloc(strlen(varValue) + 1);
 				strcpy(currentNode->value, varValue);
 			}
+
+			addedNode = currentNode;
 			varNameUpdated = 1;
 			break;
 		}
@@ -193,7 +217,11 @@ void addVariable(char *varName, char *varValue, node *head)
 
 		newVar->next = head->next;
 		head->next = newVar;
+
+		addedNode = newVar;
 	}
+
+	return addedNode;
 }
 
 void set(node *head);
@@ -212,6 +240,9 @@ void unset(char *varName, node *head)
 {
 	node *currentNode = head->next;
 	node *previousNode = head;
+
+	unsetenv(varName);
+
 	while (currentNode != NULL)
 	{
 		if (strcmp(currentNode->name, varName) == 0)
@@ -225,6 +256,34 @@ void unset(char *varName, node *head)
 		// printf("%s=%s\n", currentNode->name, currentNode->value);
 		currentNode = currentNode->next;
 		previousNode = previousNode->next;
+	}
+}
+void export(char *exportParam, node *head);
+
+void export(char *exportParam, node *head)
+{
+	node *varNode;
+
+	if (strchr(exportParam, '=') == NULL)
+	{
+		varNode = searchForVariable(exportParam, head);
+
+		if (varNode != NULL)
+		{
+			setenv(varNode->name, varNode->value, 1);
+		}
+	}
+	else
+	{
+		if (isalpha(exportParam[0]) || (exportParam[0] >= '_'))
+		{
+			char *assignmentOp = strchr(exportParam, '=');
+			*assignmentOp = 0;
+
+			varNode = addVariable(exportParam, ++assignmentOp, head);
+			setenv(varNode->name, varNode->value, 1);
+			
+		}
 	}
 }
 
@@ -268,6 +327,12 @@ int main(int argc, char **argv)
 			*assignmentOp = 0;
 			// printf("%s, %s\n", cmdArgv[0], ++assignmentOp);
 			addVariable(cmdArgv[0], ++assignmentOp, &localVarsHead);
+			continue;
+		}
+
+		if (strcmp(cmdArgv[0], "export") == 0)
+		{
+			export(cmdArgv[1], &localVarsHead);
 			continue;
 		}
 
