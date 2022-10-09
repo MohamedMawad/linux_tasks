@@ -190,6 +190,12 @@ node *addVariable(char *varName, char *varValue, node *head)
 
 			addedNode = currentNode;
 			varNameUpdated = 1;
+
+			if (getenv(currentNode->name) != NULL)
+			{
+				setenv(currentNode->name, currentNode->value, 1);
+			}
+
 			break;
 		}
 
@@ -217,8 +223,12 @@ node *addVariable(char *varName, char *varValue, node *head)
 
 		newVar->next = head->next;
 		head->next = newVar;
-
 		addedNode = newVar;
+
+		if (getenv(newVar->name) != NULL)
+		{
+			setenv(newVar->name, newVar->value, 1);
+		}
 	}
 
 	return addedNode;
@@ -275,14 +285,17 @@ void export(char *exportParam, node *head)
 	}
 	else
 	{
-		if (isalpha(exportParam[0]) || (exportParam[0] >= '_'))
+		if (isalpha(exportParam[0]) || (exportParam[0] == '_'))
 		{
 			char *assignmentOp = strchr(exportParam, '=');
 			*assignmentOp = 0;
 
 			varNode = addVariable(exportParam, ++assignmentOp, head);
 			setenv(varNode->name, varNode->value, 1);
-			
+		}
+		else
+		{
+			printf("export: %s: not a valid identifier\n", exportParam);
 		}
 	}
 }
@@ -311,17 +324,17 @@ int main(int argc, char **argv)
 		printPrompt();
 		// gets(input);
 		lineSize = getline(&line, &len, stdin);
+		line[lineSize - 1] = '\0';
+
 		// Handling the empty line from the user
 		if (lineSize == 1ll)
 		{
 			continue;
 		}
-		line[lineSize - 1] = '\0';
 		cmdArgc = tokenizer(line, ' ', &cmdArgv);
-
 		// set(&localVarsHead);
 		if ((strchr(cmdArgv[0], '=') != NULL) && (cmdArgc == 1) &&
-			(isalpha(cmdArgv[0][0]) || (cmdArgv[0][0] >= '_')))
+			(isalpha(cmdArgv[0][0]) || (cmdArgv[0][0] == '_')))
 		{
 			char *assignmentOp = strchr(cmdArgv[0], '=');
 			*assignmentOp = 0;
