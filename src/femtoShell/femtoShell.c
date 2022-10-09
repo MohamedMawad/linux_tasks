@@ -15,8 +15,6 @@ void yellow() { printf("\033[1;33m"); }
 void blue() { printf("\033[1;34m"); }
 void reset() { printf("\033[0m"); }
 
-// extern char **environ;
-// char **environ;
 
 void printPrompt(void);
 
@@ -40,155 +38,79 @@ void printPrompt(void)
 	printf("# ");
 }
 
-int tokenizer(char *inputStr, char separator, char ***output);
-
-int tokenizer(char *inputStr, char separator, char ***output)
-{
-	int len = strlen(inputStr);
-	char *cpdInputStr = (char *)malloc(len + 1);
-
-	if (cpdInputStr == NULL)
-	{
-		perror("malloc() call in str_separate");
-		exit(1);
-	}
-
-	strcpy(cpdInputStr, inputStr);
-	int numTokens = 0;
-	char **currentToken;
-
-	for (int i = 0; i < len; i++)
-	{
-		if ((cpdInputStr[i] == separator))
-		{
-			cpdInputStr[i] = '\0';
-			numTokens++;
-			for (int j = i + 1; j < len - 1; j++)
-			{
-				if (cpdInputStr[j] != separator)
-					break;
-				else
-					i = j;
-			}
-		}
-	}
-
-	// Tokens is larger than separatos by one
-	numTokens++;
-	// Adding 1 for a pointer to NULL teminator on the output
-	*output = malloc((numTokens + 1) * sizeof(char *));
-
-	if (*output == NULL)
-	{
-		perror("malloc() call in str_separate");
-		exit(1);
-	}
-
-	currentToken = *output;
-	*currentToken = cpdInputStr;
-
-	for (int i = 0; i < len; i++)
-	{
-		if (cpdInputStr[i] == '\0')
-		{
-			// Skip multiple separator
-			for (int j = i + 1; j < len - 1; j++)
-			{
-				if (cpdInputStr[j] != separator)
-					break;
-				else
-					i = j;
-			}
-			currentToken++;
-			*currentToken = &(cpdInputStr[i + 1]);
-		}
-	}
-
-	// Adding the pointer to NULL at the last element of the output
-	currentToken++;
-	*currentToken = NULL;
-	return numTokens;
-}
 
 typedef struct _node
 {
 	char *name;
 	char *value;
 	struct _node *next;
-} node;
+} node_t;
 
-node *searchForVariable(char *varName, node *head);
+node_t shellVarsFirstNode = {NULL, NULL, NULL};
+node_t *shellVarsHead = &shellVarsFirstNode;
 
-node *searchForVariable(char *varName, node *head)
+char *searchForVariable(char *varName);
+
+char *searchForVariable(char *varName)
 {
-	node *currentNode = head->next;
-	node *retNode = NULL;
+	node_t *currentNode = shellVarsHead->next;
+	char *retValue = NULL;
 
 	while (currentNode != NULL)
 	{
 		if (strcmp(currentNode->name, varName) == 0)
 		{
-			retNode = currentNode;
+			retValue = currentNode->value;
 			break;
 		}
 
 		currentNode = currentNode->next;
 	}
 
-	return retNode;
+	return retValue;
 }
 
-node *addVariable(char *varName, char *varValue, node *head);
+char *addVariable(char *varName, char *varValue);
 
-node *addVariable(char *varName, char *varValue, node *head)
+char *addVariable(char *varName, char *varValue)
 {
-	node *currentNode = head->next;
-	node *addedNode = NULL;
+	node_t *currentNode = shellVarsHead->next;
+	char *addedVarValue = varValue;
 	int varNameUpdated = 0;
-	int varValueUpdated = 0;
 
 	// check that the varValue is an immediate value or a vraiable starting with $ sign
 	if (varValue[0] == '$')
 	{
-		while (currentNode != NULL)
-		{
-			if (strcmp(currentNode->name, &varValue[1]) == 0)
-			{
-				varValue = currentNode->value;
-				varValueUpdated = 1;
-				break;
-			}
+		addedVarValue = searchForVariable(&varValue[1]);
 
-			currentNode = currentNode->next;
-		}
-
-		if (varValueUpdated == 0)
+		if (addedVarValue == NULL)
 		{
-			varValue = NULL;
+			addedVarValue = getenv(&varValue[1]);
 		}
 	}
-
-	// Reset currentNode pointer to start from the head
-	currentNode = head->next;
 
 	// Search for the variable name and update it if found
 	while (currentNode != NULL)
 	{
 		if (strcmp(currentNode->name, varName) == 0)
 		{
-			free(currentNode->value);
-			if (varValue == NULL)
+			if (currentNode->value != addedVarValue)
 			{
-				currentNode->value = (char *)malloc(1);
-				strcpy(currentNode->value, "");
-			}
-			else
-			{
-				currentNode->value = (char *)malloc(strlen(varValue) + 1);
-				strcpy(currentNode->value, varValue);
+				free(currentNode->value);
+
+				if (addedVarValue == NULL)
+				{
+					currentNode->value = (char *)malloc(1);
+					strcpy(currentNode->value, "");
+				}
+				else
+				{
+					currentNode->value = (char *)malloc(strlen(addedVarValue) + 1);
+					strcpy(currentNode->value, addedVarValue);
+				}
+				addedVarValue = currentNode->value;
 			}
 
-			addedNode = currentNode;
 			varNameUpdated = 1;
 
 			if (getenv(currentNode->name) != NULL)
@@ -205,25 +127,24 @@ node *addVariable(char *varName, char *varValue, node *head)
 	// create a new variable if not found
 	if (varNameUpdated == 0)
 	{
-		node *newVar = (node *)malloc(sizeof(node));
+		node_t *newVar = (node_t *)malloc(sizeof(node_t));
 
 		newVar->name = (char *)malloc(strlen(varName) + 1);
 		strcpy(newVar->name, varName);
 
-		if (varValue == NULL)
+		if (addedVarValue == NULL)
 		{
 			newVar->value = (char *)malloc(1);
 			strcpy(newVar->value, "");
 		}
 		else
 		{
-			newVar->value = (char *)malloc(strlen(varValue) + 1);
-			strcpy(newVar->value, varValue);
+			newVar->value = (char *)malloc(strlen(addedVarValue) + 1);
+			strcpy(newVar->value, addedVarValue);
 		}
 
-		newVar->next = head->next;
-		head->next = newVar;
-		addedNode = newVar;
+		newVar->next = shellVarsHead->next;
+		shellVarsHead->next = newVar;
 
 		if (getenv(newVar->name) != NULL)
 		{
@@ -231,227 +152,333 @@ node *addVariable(char *varName, char *varValue, node *head)
 		}
 	}
 
-	return addedNode;
+	return addedVarValue;
 }
 
-void set(node *head);
+int set(int cmdArgc, char **cmdArgv);
 
-void set(node *head)
+int set(int cmdArgc, char **cmdArgv)
 {
-	node *currentNode = head->next;
+	node_t *currentNode = shellVarsHead->next;
 	while (currentNode != NULL)
 	{
 		printf("%s=%s\n", currentNode->name, currentNode->value);
 		currentNode = currentNode->next;
 	}
+
+	return 0;
 }
 
-void unset(char *varName, node *head)
+int unset(int cmdArgc, char **cmdArgv)
 {
-	node *currentNode = head->next;
-	node *previousNode = head;
+	node_t *currentNode = NULL;
+	node_t *previousNode = NULL;
 
-	unsetenv(varName);
-
-	while (currentNode != NULL)
+	for (int i = 1; i < cmdArgc; i++)
 	{
-		if (strcmp(currentNode->name, varName) == 0)
+		currentNode = shellVarsHead->next;
+		previousNode = shellVarsHead;
+		unsetenv(cmdArgv[i]);
+
+		while (currentNode != NULL)
 		{
-			previousNode->next = currentNode->next;
-			currentNode->next = NULL;
-			free(currentNode->name);
-			free(currentNode->value);
-			free(currentNode);
+			if (strcmp(currentNode->name, cmdArgv[i]) == 0)
+			{
+				previousNode->next = currentNode->next;
+				currentNode->next = NULL;
+				free(currentNode->name);
+				free(currentNode->value);
+				free(currentNode);
+			}
+			currentNode = currentNode->next;
+			previousNode = previousNode->next;
 		}
-		// printf("%s=%s\n", currentNode->name, currentNode->value);
-		currentNode = currentNode->next;
-		previousNode = previousNode->next;
 	}
+
+	// TODO: Check and return the status instead of hardcoded 0
+	return 0;
 }
-void export(char *exportParam, node *head);
+int export(int cmdArgc, char **cmdArgv);
 
-void export(char *exportParam, node *head)
+int export(int cmdArgc, char **cmdArgv)
 {
-	node *varNode;
+	char *varValue;
 
-	if (strchr(exportParam, '=') == NULL)
+	for (int i = 1; i < cmdArgc; i++)
 	{
-		varNode = searchForVariable(exportParam, head);
-
-		if (varNode != NULL)
+		if (strchr(cmdArgv[i], '=') == NULL)
 		{
-			setenv(varNode->name, varNode->value, 1);
-		}
-	}
-	else
-	{
-		if (isalpha(exportParam[0]) || (exportParam[0] == '_'))
-		{
-			char *assignmentOp = strchr(exportParam, '=');
-			*assignmentOp = 0;
+			varValue = searchForVariable(cmdArgv[i]);
 
-			varNode = addVariable(exportParam, ++assignmentOp, head);
-			setenv(varNode->name, varNode->value, 1);
+			if (varValue != NULL)
+			{
+				setenv(cmdArgv[i], varValue, 1);
+			}
 		}
 		else
 		{
-			printf("export: %s: not a valid identifier\n", exportParam);
+			if (isalpha(cmdArgv[i][0]) || (cmdArgv[i][0] == '_'))
+			{
+				char *assignmentOp = strchr(cmdArgv[i], '=');
+				*assignmentOp = 0;
+
+				varValue = addVariable(cmdArgv[i], ++assignmentOp);
+				setenv(cmdArgv[i], varValue, 1);
+			}
+			else
+			{
+				printf("export: %s: not a valid identifier\n", cmdArgv[i]);
+			}
 		}
 	}
+
+	// TODO: Check and return the status instead of hardcoded 0
+	return 0;
 }
 
-int main(int argc, char **argv)
+#define CMD_LINE_MAX 1024
+#define CMD_ARGV_MAX 128
+
+void ignoreSignals(void)
 {
-
-	char *line = NULL;
-	char **cmdArgv = NULL;
-	int cmdArgc;
-	size_t len = 0;
-	ssize_t lineSize = 0;
-	pid_t ret_wait, ch_pid;
-	int wstatus;
-	int cmdIndex = 0;
-	node localVarsHead;
-	localVarsHead.next = NULL;
-
-	// Ignoring the following signals Ctrl+C(SIGINT), Ctrl+Z(SIGTSTP), Ctrl+\(SIGQUIT)
 	signal(SIGINT, SIG_IGN);
 	signal(SIGTSTP, SIG_IGN);
 	signal(SIGQUIT, SIG_IGN);
+}
+void enableSignals(void)
+{
+	signal(SIGINT, SIG_DFL);
+	signal(SIGTSTP, SIG_DFL);
+	signal(SIGQUIT, SIG_DFL);
+}
 
-	while (1)
+void readCommand(char *cmdLine, int maxLineSize)
+{
+	size_t cmdLineLen;
+	fgets(cmdLine, maxLineSize, stdin);
+
+	// Replace trailing '\n' with NULL terminator
+	cmdLineLen = strlen(cmdLine);
+	cmdLine[cmdLineLen - 1] = '\0';
+}
+
+int parseCmdLine(char *cmdLine, char **cmdArgv)
+{
+	char *token;
+	char *rest = cmdLine;
+	int cmdStartedFlag = 0;
+	int cmdArgc = 0;
+
+	while ((token = strtok_r(rest, " ", &rest)))
 	{
-		printPrompt();
-		// gets(input);
-		lineSize = getline(&line, &len, stdin);
-		line[lineSize - 1] = '\0';
 
-		// Handling the empty line from the user
-		if (lineSize == 1ll)
+		if (cmdStartedFlag == 0)
 		{
-			continue;
-		}
-		cmdArgc = tokenizer(line, ' ', &cmdArgv);
-		// set(&localVarsHead);
-		if ((strchr(cmdArgv[0], '=') != NULL) && (cmdArgc == 1) &&
-			(isalpha(cmdArgv[0][0]) || (cmdArgv[0][0] == '_')))
-		{
-			char *assignmentOp = strchr(cmdArgv[0], '=');
-			*assignmentOp = 0;
-			// printf("%s, %s\n", cmdArgv[0], ++assignmentOp);
-			addVariable(cmdArgv[0], ++assignmentOp, &localVarsHead);
-			continue;
-		}
-
-		if (strcmp(cmdArgv[0], "export") == 0)
-		{
-			export(cmdArgv[1], &localVarsHead);
-			continue;
-		}
-
-		if (strcmp(cmdArgv[0], "exit") == 0)
-		{
-			printf("Good Bye :) \n");
-			break;
-		}
-		else if (strcmp(cmdArgv[0], "set") == 0)
-		{
-			set(&localVarsHead);
-			continue;
-		}
-		else if (strcmp(cmdArgv[0], "unset") == 0)
-		{
-			for (int i = 1; i < cmdArgc; i++)
+			char *assignmentOp = strchr(token, '=');
+			if ((assignmentOp != NULL) &&
+				((isalpha(token[0]) || (token[0] == '_'))))
 			{
-				unset(cmdArgv[i], &localVarsHead);
+				// TODO: Hide the following two lines inside addVariable function
+				char *varValue = assignmentOp + 1;
+				// Separate between the variable name and variable value
+				*assignmentOp = '\0';
+				addVariable(token, varValue);
 			}
-			continue;
+			else
+			{
+				cmdStartedFlag = 1;
+			}
 		}
-		else if (strcmp(cmdArgv[0], "cd") == 0)
+
+		if (cmdStartedFlag == 1)
 		{
-			static char previousPath[PATH_MAX + 1] = {0};
-			char currentPath[PATH_MAX + 1];
-			int status = 0;
-
-			getcwd(currentPath, PATH_MAX + 1);
-
-			if (cmdArgc == 1 || (strcmp(cmdArgv[1], "~") == 0))
+			if (strchr(token, '$') == NULL)
 			{
-				chdir(getenv("HOME"));
+				cmdArgv[cmdArgc++] = token;
 			}
-			else if (cmdArgc > 2)
+			else
 			{
-				printf("cd: too many arguments\n");
-				status = -1;
-			}
-			else if (strcmp(cmdArgv[1], "-") == 0)
-			{
-
-				if ((previousPath[0] != 0))
+				char *var = searchForVariable(&token[1]);
+				if (var == NULL)
 				{
-					if (chdir(previousPath) == -1)
+					var = getenv(&token[1]);
+
+					if (var != NULL)
 					{
-						printf("cd: %s: No such file or directory\n", previousPath);
-						status = -1;
+						cmdArgv[cmdArgc++] = var;
 					}
 				}
 				else
 				{
-					printf("cd: OLDPWD not set\n");
-					status = -1;
+					cmdArgv[cmdArgc++] = var;
 				}
 			}
-			else if (chdir(cmdArgv[1]) == -1)
+		}
+	}
+
+	cmdArgv[cmdArgc] = NULL;
+
+	return cmdArgc;
+}
+
+// controlCmd function handels empty cmdLine
+// TODO: Extend controlCmd to support ! ; | && || > < and other symbols
+int controlCmd(int cmdArgc, char **cmdArgv)
+{
+	int retStatus = 0;
+	if (cmdArgc == 0)
+	{
+		retStatus = 1;
+	}
+
+	return retStatus;
+}
+
+int externalCmd(int cmdArgc, char **cmdArgv)
+{
+	int retStatus = 0;
+	pid_t ret_wait, ch_pid;
+	int wstatus;
+
+	ch_pid = fork();
+
+	if (ch_pid == 0)
+	{
+		// child code
+		enableSignals();
+		execvp(cmdArgv[0], cmdArgv);
+		printf("%s: command not found\n", cmdArgv[0]);
+		exit(0);
+	}
+	else if (ch_pid > 0)
+	{
+		// patrent code
+		ret_wait = wait(&wstatus);
+		retStatus = 1;
+	}
+	else
+	{
+		printf("Error: fork can't create a new chiled\n");
+		exit(EXIT_FAILURE);
+	}
+
+	return retStatus;
+}
+
+typedef int (*ptf)(int, char **);
+
+typedef struct
+{
+	char cmd[NAME_MAX];
+	ptf builtInFunction;
+} builtInCmd_t;
+
+int cd(int cmdArgc, char **cmdArgv);
+int cd(int cmdArgc, char **cmdArgv)
+{
+	static char previousPath[PATH_MAX + 1] = {0};
+	char currentPath[PATH_MAX + 1];
+	int status = 0;
+
+	getcwd(currentPath, PATH_MAX + 1);
+
+	if (cmdArgc == 1 || (strcmp(cmdArgv[1], "~") == 0))
+	{
+		chdir(getenv("HOME"));
+	}
+	else if (cmdArgc > 2)
+	{
+		printf("cd: too many arguments\n");
+		status = -1;
+	}
+	else if (strcmp(cmdArgv[1], "-") == 0)
+	{
+
+		if ((previousPath[0] != 0))
+		{
+			if (chdir(previousPath) == -1)
 			{
-				printf("cd: %s: No such file or directory\n", cmdArgv[1]);
+				printf("cd: %s: No such file or directory\n", previousPath);
 				status = -1;
 			}
-
-			if (status == 0)
-			{
-				strcpy(previousPath, currentPath);
-				previousPath[strlen(currentPath)] = 0;
-			}
-
-			continue;
-		}
-
-		ch_pid = fork();
-
-		if (ch_pid == 0)
-		{
-			// child code
-			// printf("child:\n");
-			// printf("pid = %d, ppid = %d\n", getpid(), getppid());
-			// printf("ch_pid = %d\n", ch_pid);
-			execvp(cmdArgv[0], cmdArgv);
-			printf("%s Not a command\n", line);
-			exit(0);
-		}
-		else if (ch_pid > 0)
-		{
-			// patrent code
-			// printf("parent:\n");
-			// printf("pid = %d, ppid = %d\n", getpid(), getppid());
-			// printf("ch_pid = %d\n", ch_pid);
-			// sleep(20);
-			ret_wait = wait(&wstatus);
 		}
 		else
 		{
-			printf("Error: fork can't create a new chiled\n");
-			exit(EXIT_FAILURE);
+			printf("cd: OLDPWD not set\n");
+			status = -1;
 		}
-
-		// printf("pid = %d, ppid = %d\n", getpid(), getppid());
-		// printf("%ld\n", lineSize);
-		// printf("You Said: %s\n", line);
-
-		free(cmdArgv[0]);
-		free(cmdArgv);
+	}
+	else if (chdir(cmdArgv[1]) == -1)
+	{
+		printf("cd: %s: No such file or directory\n", cmdArgv[1]);
+		status = -1;
 	}
 
-	free(line);
+	if (status == 0)
+	{
+		strcpy(previousPath, currentPath);
+		previousPath[strlen(currentPath)] = 0;
+	}
+
+	return 0;
+}
+
+int Exit(int cmdArgc, char **cmdArgv);
+int Exit(int cmdArgc, char **cmdArgv)
+{
+	exit(0);
+	return 0;
+}
+
+#define BUILT_IN_NUM 5
+builtInCmd_t builtInCmdList[BUILT_IN_NUM] = {
+	{"exit", Exit},
+	{"cd", cd},
+	{"set", set},
+	{"unset", unset},
+	{"export", export},
+};
+
+int builtInCmd(int cmdArgc, char **cmdArgv)
+{
+	int retStatus = 0;
+
+	for (int i = 0; i < BUILT_IN_NUM; i++)
+	{
+		if (strcmp(cmdArgv[0], builtInCmdList[i].cmd) == 0)
+		{
+			builtInCmdList[i].builtInFunction(cmdArgc, cmdArgv);
+			retStatus = 1;
+			break;
+		}
+	}
+
+	return retStatus;
+}
+
+int main(int argc, char **argv)
+{
+	char cmdLine[CMD_LINE_MAX];
+	char *cmdArgv[CMD_ARGV_MAX];
+	int cmdArgc;
+
+	ignoreSignals();
+
+	while (1)
+	{
+		printPrompt();
+
+		readCommand(cmdLine, CMD_LINE_MAX);
+
+		cmdArgc = parseCmdLine(cmdLine, cmdArgv);
+
+		if ((controlCmd(cmdArgc, cmdArgv)) ||
+			(builtInCmd(cmdArgc, cmdArgv)) ||
+			(externalCmd(cmdArgc, cmdArgv)))
+		{
+			continue;
+		}
+	}
 
 	return 0;
 }
