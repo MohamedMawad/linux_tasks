@@ -1,17 +1,16 @@
 APP ?=
 BUILD_DIR := ./bin
 SRC_DIRS := ./src/$(APP)
+INC_DIRS := ./inc/$(APP)
 CC := gcc
 
 # Find all the C files we want to compile
 SRCS := $(shell find $(SRC_DIRS) -name '*.c')
 
 
-
-
 $(BUILD_DIR)/$(APP): check-app
 	@mkdir -p $(BUILD_DIR)
-	@$(CC) $(SRCS) -o $@
+	@$(CC) $(SRCS) $(addprefix -I, $(INC_DIRS)) -o $@
 
 
 run: $(BUILD_DIR)/$(APP)
