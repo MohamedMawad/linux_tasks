@@ -4,22 +4,60 @@ This Repo has some linux applications, like simple shell, some linux commands, e
 ## Build Command:  
 `cd LINUX_TASKS`  
 `make APP=<application_name>`  
+  - Example:  
+    - `make APP=femtoShell`  
 
 ## Run Command: 
 `cd LINUX_TASKS/bin`  
 `./<application_name>`  
+  - Example:  
+    - `./femtoShell`  
 
 ## APPs:  
 **1. femtoShell APP:**  
-  - Simple Shell that supports echo for user input and exit command  
-  - femtoShell Output Example:
+  - Simple Shell that supports the following features:  
+    * Interactive colored prompt with username, hostname and current path.  
+    * Parse the command line and run all the external commands with the command line args like ls, pwd, ... etc.    
+    * Parse = sign and add the name and value to the process local variables.  
+    * Parse $ sign and expand the value of the specified name after $ from the local/environment variables or ignore it if it is not found on local or environment variables.    
+    * Built in commands:  
+      1. exit: terminate the femtoShell program.    
+      2. cd: change directory command that supports ~ sign or no args(home dir) and - sign(previous path).  
+      3. set: print all local variables with their values.  
+      4. unset: remove one or more specified local variable names.  
+      5. export: move one or more local variables to the environment variables.   
+  - femtoShell Output Example:  
 ```
-Femto_Shell_Prompt:# Hello   
-You Said: Hello   
-Femto_Shell_Prompt:# Test the shell  
-You Said: Test the shell  
-Femto_Shell_Prompt:# exit  
-Good Bye :)  
+moawad@moawad-VB:~/linux_tasks$ ./bin/femtoShell 
+moawad@moawad-VB:/home/moawad/linux_tasks# pwd
+/home/moawad/linux_tasks
+moawad@moawad-VB:/home/moawad/linux_tasks# cd ~
+moawad@moawad-VB:/home/moawad# cd -
+moawad@moawad-VB:/home/moawad/linux_tasks# var1=123
+moawad@moawad-VB:/home/moawad/linux_tasks# var2=456
+moawad@moawad-VB:/home/moawad/linux_tasks# set
+var2=456
+var1=123
+moawad@moawad-VB:/home/moawad/linux_tasks# var3=$var2 var4=$var1 set
+var4=123
+var3=456
+var2=456
+var1=123
+moawad@moawad-VB:/home/moawad/linux_tasks# unset var3 var4
+moawad@moawad-VB:/home/moawad/linux_tasks# set
+var2=456
+var1=123
+moawad@moawad-VB:/home/moawad/linux_tasks# export var1
+moawad@moawad-VB:/home/moawad/linux_tasks# printenv var1
+123
+moawad@moawad-VB:/home/moawad/linux_tasks# echo $var82
+
+moawad@moawad-VB:/home/moawad/linux_tasks# echo $var2
+456
+moawad@moawad-VB:/home/moawad/linux_tasks# echo $HOME
+/home/moawad
+moawad@moawad-VB:/home/moawad/linux_tasks# exit
+moawad@moawad-VB:~/linux_tasks$  
 ```
 **2. echo command:**  
   - used to print a user string on stdout  
