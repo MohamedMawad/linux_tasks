@@ -32,6 +32,7 @@
 #include <grp.h>
 #include <pwd.h>
 #include <errno.h>
+#include <sys/ioctl.h>
 
 /************************************************************************/
 /*				                   DEFINES	            		        */
@@ -40,7 +41,7 @@
 #define MAX_NAME 256
 #define MAX_OPTIONS 10
 #define MAX_PATH 4096
-#define TERMINAL_ROWLEN 80
+// #define TERMINAL_ROWLEN 80
 #define MAXLEN_INODE 8
 
 #define NO_OPTION 0

@@ -96,7 +96,9 @@ int main(int argc, char **argv)
     }
     else
     {
-        // Number_of_paths = argc - Number_of_Separated_options - 1;
+        int Number_of_paths = argc - Number_of_Separated_options - 1;
+        int Number_of_dirs = 0;
+
         for (int path_parsing_index = 1; path_parsing_index < argc; path_parsing_index++)
         {
 
@@ -114,6 +116,18 @@ int main(int argc, char **argv)
                 }
                 else if (S_ISDIR(file_status.st_mode))
                 {
+                    Number_of_dirs++;
+                    if (Number_of_paths != 1)
+                    {
+                        if (Number_of_dirs == 1)
+                        {
+                            printf("%s:\n", path);
+                        }
+                        else
+                        {
+                            printf("\n\n%s:\n", path);
+                        }
+                    }
 
                     Display_Dir_Content(path);
                 }

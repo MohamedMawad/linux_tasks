@@ -94,3 +94,30 @@ moawad@moawad-VB:~/linux_tasks/bin$ ./mv test_file test_file_mv
 moawad@moawad-VB:~/linux_tasks/bin$ ls  
 mv  test_file_mv   
 ```
+
+**6. ls command:**  
+  - lists directory contents and supports the following options: 
+    * -a   do not ignore entries starting with .
+    * -i   print the index number of each file
+    * -l   use a long listing format
+  - ls Output Example:
+```
+moawad@moawad-VB:~/linux_tasks/bin$ ./ls
+cp          ls          femtoShell  
+moawad@moawad-VB:~/linux_tasks/bin$ ./ls -i ..
+3015326 bin        2230268 inc        2230264 Makefile   3014895 src        
+2230265 README.md  
+moawad@moawad-VB:~/linux_tasks/bin$ ./ls -l ../src ../inc
+../src:
+drwxrwxr-x  2 moawad moawad   4096 Mon Sep 26 02:09:11 2022 pwd         
+drwxrwxr-x  2 moawad moawad   4096 Mon Sep 26 23:44:57 2022 mv          
+drwxrwxr-x  2 moawad moawad   4096 Mon Sep 26 01:41:12 2022 echo        
+drwxrwxr-x  2 moawad moawad   4096 Mon Sep 26 23:44:57 2022 cp          
+drwxrwxr-x  2 moawad moawad   4096 Sat Nov 12 16:00:01 2022 ls          
+drwxrwxr-x  2 moawad moawad   4096 Mon Oct 10 23:57:20 2022 femtoShell  
+
+../inc:
+drwxrwxr-x  2 moawad moawad   4096 Sat Nov 12 15:59:44 2022 ls          
+drwxrwxr-x  2 moawad moawad   4096 Mon Oct 10 23:57:20 2022 femtoShell  
+moawad@moawad-VB:~/linux_tasks/bin$  
+```

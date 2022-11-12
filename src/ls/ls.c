@@ -34,8 +34,8 @@ static int cursor_position = 0;
 void Display_Dir_Content(char *path)
 {
 	char **List_of_Filenames = NULL;
-	char **h = (char **)malloc(40);
 	int Number_of_Files = 0;
+	char saved_cwd[MAX_PATH];
 
 	/*start of Insert_Filenames_in_List fuction section*/
 
@@ -90,6 +90,8 @@ void Display_Dir_Content(char *path)
 
 	/*end of Insert_Filenames_in_List fuction section*/
 
+	getcwd(saved_cwd, MAX_PATH);
+
 	if (chdir(path) < 0)
 	{
 		Report_Error("chdir");
@@ -98,6 +100,11 @@ void Display_Dir_Content(char *path)
 	for (int list_index = 0; list_index < Number_of_Files; list_index++)
 	{
 		Display_File(List_of_Filenames[list_index]);
+	}
+
+	if (chdir(saved_cwd) < 0)
+	{
+		Report_Error("chdir");
 	}
 
 	/*** Free the allocated space ***/
@@ -109,10 +116,11 @@ void Display_Dir_Content(char *path)
 	free(List_of_Filenames);
 }
 
-
 void Display_File(char *Filename)
 {
 	struct stat file_status;
+	struct winsize w;
+	ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
 	if (stat(Filename, &file_status) == -1)
 	{
@@ -126,17 +134,17 @@ void Display_File(char *Filename)
 		case NO_OPTION:
 			if (Filename[0] != '.')
 			{
-				if (g_maxlen_of_file_name > TERMINAL_ROWLEN - cursor_position)
+				if (g_maxlen_of_file_name > w.ws_col - cursor_position)
 				{
 					printf("\n");
 					cursor_position = 0;
 				}
 				Print_Colored_File(&file_status, Filename);
-				cursor_position += g_maxlen_of_file_name;
+				cursor_position += g_maxlen_of_file_name + 2;
 			}
 			break;
 		case OPTION_a:
-			if (g_maxlen_of_file_name > TERMINAL_ROWLEN - cursor_position)
+			if (g_maxlen_of_file_name > w.ws_col - cursor_position)
 			{
 				printf("\n");
 				cursor_position = 0;
@@ -147,18 +155,18 @@ void Display_File(char *Filename)
 		case OPTION_i:
 			if (Filename[0] != '.')
 			{
-				if (g_maxlen_of_file_name + MAXLEN_INODE > TERMINAL_ROWLEN - cursor_position)
+				if (g_maxlen_of_file_name + MAXLEN_INODE > w.ws_col - cursor_position)
 				{
 					printf("\n");
 					cursor_position = 0;
 				}
 				Print_Inode_Number(&file_status);
 				Print_Colored_File(&file_status, Filename);
+				cursor_position += g_maxlen_of_file_name + MAXLEN_INODE;
 			}
-			cursor_position += g_maxlen_of_file_name + MAXLEN_INODE;
 			break;
 		case OPTION_a + OPTION_i:
-			if (g_maxlen_of_file_name + MAXLEN_INODE > TERMINAL_ROWLEN - cursor_position)
+			if (g_maxlen_of_file_name + MAXLEN_INODE > w.ws_col - cursor_position)
 			{
 				printf("\n");
 				cursor_position = 0;
@@ -365,7 +373,7 @@ void Print_User_Name(struct stat *file_info)
 
 	psd = getpwuid(file_info->st_uid);
 
-	printf("%#s ", psd->pw_name);
+	printf("%s ", psd->pw_name);
 }
 
 void Print_Group_Name(struct stat *file_info)
@@ -374,23 +382,23 @@ void Print_Group_Name(struct stat *file_info)
 
 	grp = getgrgid(file_info->st_gid);
 
-	printf("%#s ", grp->gr_name);
+	printf("%s ", grp->gr_name);
 }
 
 void Print_User_ID(struct stat *file_info)
 {
-	printf("%#ld ", (long)file_info->st_uid);
+	printf("%ul ", file_info->st_uid);
 }
 
 void Print_Group_ID(struct stat *file_info)
 {
-	printf("%#ld ", (long)file_info->st_gid);
+	printf("%ul ", file_info->st_gid);
 }
 
 void Print_File_Size(struct stat *file_info)
 {
 
-	printf("%6lld ", (long long)file_info->st_size);
+	printf("%6ld ", file_info->st_size);
 }
 
 void Print_File_Type(struct stat *file_info)
@@ -429,7 +437,7 @@ void Print_Last_Modification_Time(struct stat *file_info)
 	char buff_time[32];
 	strcpy(buff_time, ctime(&file_info->st_mtime));
 	buff_time[strlen(buff_time) - 1] = '\0';
-	printf("%#s ", buff_time);
+	printf("%s ", buff_time);
 }
 
 void Print_Last_Access_Time(struct stat *file_info)
@@ -438,16 +446,16 @@ void Print_Last_Access_Time(struct stat *file_info)
 
 	strcpy(buff_time, ctime(&file_info->st_atime));
 	buff_time[strlen(buff_time) - 1] = '\0';
-	printf("%#s ", buff_time);
+	printf("%s ", buff_time);
 }
 
 void Print_Number_Of_Links(struct stat *file_info)
 {
-	printf("%3ld ", (long)file_info->st_nlink);
+	printf("%3ld ", file_info->st_nlink);
 }
 
 void Report_Error(const char *err_string)
 {
 	perror(err_string);
-	exit(1);
+	exit(errno);
 }
